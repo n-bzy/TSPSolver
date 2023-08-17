@@ -31,7 +31,7 @@ class HNConfig:
     read_file = True
     file_path = Files.path
     city_file = Files.random_10_cities
-    city_num = 30
+    city_num = 10
 
 
 class GifMakerConfig:
