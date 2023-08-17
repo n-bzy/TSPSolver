@@ -5,7 +5,7 @@ from typing import Union, Type
 
 
 def make_directory(
-    Config: Union[Type[config.ENConfig], Type[config.SOMConfig], Type[config.HNConfig]]
+    Config: Type[config.HNConfig]
 ) -> str:
     dir_name = "./results/%s/%s/" % (Config.city_file.replace(".csv", ""), Config.name)
     directory = os.path.dirname(dir_name)

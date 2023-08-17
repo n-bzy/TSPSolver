@@ -1,23 +1,23 @@
 from config import HNConfig as Config
-import numpy as np  # type: ignore
-from matplotlib import pyplot as plt  # type: ignore
-from matplotlib import cm  # type: ignore
-from matplotlib import colors  # type: ignore
-import pandas as pd  # type: ignore
+import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib import cm
+from matplotlib import colors
+import pandas as pd
 import util
 
 window_size = 5
 dpi = 100
-iter_lim = 1000
-record_moment = np.arange(0, iter_lim, 10)
-record = True
+eps = 500
+record_moment = np.arange(0, eps, 10)
+record = False
 delta_t = 0.01
 noise = 0.001
 u_0 = 0.02
 param_a = 1.0
 param_b = 1.0
 param_c = 2.0
-param_d = 1.0
+param_d = 0.5
 
 
 @np.vectorize
@@ -29,6 +29,12 @@ def sigmoid(input: float) -> float:
         return 1.0 - 1e-15
     return 1.0 / (1.0 + np.exp(-input / u_0))
 
+# NEW
+@np.vectorize
+def tanh(input: float) -> float:
+    lamb = 0.5
+    return 1/2*(1+np.tanh(input/u_0))
+
 
 def kronecker_delta(i: int, j: int) -> float:
     if i == j:
@@ -38,6 +44,7 @@ def kronecker_delta(i: int, j: int) -> float:
 
 def calc_weight_matrix(city_array: np.array) -> np.array:
     city_num: int = city_array.shape[0]
+    # number of neurons
     n: int = city_num ** 2
     tmp: np.array = np.zeros((n, n))
     for s0 in range(n):
@@ -46,6 +53,7 @@ def calc_weight_matrix(city_array: np.array) -> np.array:
         for s1 in range(n):
             y: int = int(s1 / city_num)
             j: int = s1 % city_num
+            # distance between every pair of cities
             dxy: float = util.dist(city_array[x, :], city_array[y, :])
             tmp[s0, s1] = (
                 -param_a * kronecker_delta(x, y) * (1.0 - kronecker_delta(i, j))
@@ -88,7 +96,7 @@ def hp_begin(
 ) -> None:
     if record:
         dir_name: str = util.make_directory(Config)
-        for i in range(iter_lim):
+        for i in range(eps):
             if i in record_moment:
                 filename: str = "iteration-" + str(i) + ".png"
                 file_path: str = dir_name + filename
@@ -96,44 +104,27 @@ def hp_begin(
             inner_vals_array = update_inner_vals(
                 nodes_array, inner_vals_array, weights_matrix, biases_array
             )
-            nodes_array = sigmoid(inner_vals_array)
+            nodes_array = tanh(inner_vals_array)
             plt.title("iteration=" + str(i + 1))
             mat_visual.set_data(np.reshape(nodes_array, (city_num, city_num)))
-            plt.pause(0.0001)
+            plt.pause(0.01)
     else:
         i = 1
-        # while plt.get_fignums():
-        # inner_vals_array = update_inner_vals(nodes_array, inner_vals_array, weights_matrix, biases_array)
-        # nodes_array = sigmoid(inner_vals_array)
-        # plt.title("iteration=" + str(i))
-        # mat_visual.set_data(np.reshape(nodes_array, (city_num, city_num)))
-        # i += 1
-        # plt.pause(.01)
-        while plt.get_fignums():
-            # print(nodes_array.shape, inner_vals_array.shape, weights_matrix.shape, biases_array.shape)
+        for i in range(eps):
             inner_vals_array = update_inner_vals(
                 nodes_array, inner_vals_array, weights_matrix, biases_array
             )
-            nodes_array = sigmoid(inner_vals_array)
+            nodes_array = tanh(inner_vals_array)
             plt.title("iteration=" + str(i))
             mat_visual.set_data(np.reshape(nodes_array, (city_num, city_num)))
             i += 1
-            plt.pause(0.0001)
+            plt.pause(0.01)
 
 
 if __name__ == "__main__":
     if Config.read_file:
         np_cities = np.genfromtxt(Config.file_path + Config.city_file, delimiter=",")
         city_num = np_cities.shape[0]
-        # width_x = (np.max(np_cities[:, 0]) - np.min(np_cities[:, 0]))
-        # width_y = (np.max(np_cities[:, 1]) - np.min(np_cities[:, 1]))
-        # width = np.amax([width_x, width_y])
-        # np_cities[:, 0] -= np.min(np_cities[:, 0])
-        # np_cities[:, 0] /= width
-        # np_cities[:, 1] -= np.min(np_cities[:, 1])
-        # np_cities[:, 1] /= width
-        # center_x = np.average(np_cities[:, 0])
-        # center_y = np.average(np_cities[:, 1])
         figsize = (window_size, window_size)
     else:
         city_num = Config.city_num
@@ -142,11 +133,15 @@ if __name__ == "__main__":
         center_x = 0.5
         center_y = 0.5
         figsize = (window_size, window_size)
+    # Initialize random starting values
     inner_vals = np.matrix((np.random.random((city_num ** 2)) - 0.5) * noise).T
-    nodes = np.matrix(sigmoid(inner_vals))
+    # outputs
+    nodes = np.matrix(tanh(inner_vals))
+    # Calculate weights and save them
     weights = np.matrix(calc_weight_matrix(np_cities))
     df = pd.DataFrame(weights)
     df.to_csv("weigths.csv", header=False, index=False)
+    # Calculate biases
     biases = np.matrix(calc_bias(np_cities)).T
     fig = plt.figure(figsize=figsize, dpi=dpi)
     mat_visual = plt.matshow(
