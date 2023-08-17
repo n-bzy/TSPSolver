@@ -9,23 +9,6 @@ class Files:
     random_30_cities = "random_30_cities.csv"
 
 
-# config
-class ENConfig:
-    name = "elastic_nets"
-    read_file = True
-    file_path = Files.path
-    city_file = Files.random_20_cities
-    city_num = 100
-
-
-class SOMConfig:
-    name = "self_organizing_map"
-    read_file = True
-    file_path = Files.path
-    city_file = Files.random_20_cities
-    city_num = 30
-
-
 class HNConfig:
     name = "hopfield_net"
     read_file = True
